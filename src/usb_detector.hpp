@@ -5,6 +5,7 @@
 #include <vector>
 
 class UsbDetector {
+  friend class UsbDetectorTest;
 public:
   struct Device {
     // Informacion del dispositivo Duhhhh!!!
