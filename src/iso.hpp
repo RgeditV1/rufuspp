@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include <algorithm>
-#include <cctype>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -20,22 +18,11 @@ private:
 #endif
 
   struct IsoInfo {
-    std::string volume_id; // == name
+    std::string volume_id; // label
     std::string publisher;
     std::string isoPath;
     std::string architecture;
-    std::string getType() const {
-      std::string p = publisher;
-      std::transform(p.begin(), p.end(), p.begin(),
-                     [](unsigned char c) { return std::toupper(c); });
-      return p.find("MICROSOFT") != std::string::npos   ? "WINDOWS"
-             : p.find("CANONICAL") != std::string::npos ? "UBUNTU"
-             : p.find("ARCH") != std::string::npos      ? "ARCH"
-             : p.find("DEBIAN") != std::string::npos    ? "DEBIAN"
-             : p.find("FEDORA") != std::string::npos    ? "FEDORA"
-             : p.find("APPLE") != std::string::npos     ? "MAC"
-                                                        : "UNKNOWN";
-    }
+    std::string type;
   };
 
   std::vector<IsoInfo> myIso;
@@ -53,6 +40,9 @@ private:
     pclose(pipe);
     return result;
   }
+
+  std::string getType(const std::string &publisher,
+                      const std::string &volume_id);
 
 public:
   Iso() = default;

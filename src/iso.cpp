@@ -1,4 +1,6 @@
 #include "iso.hpp"
+#include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <memory>
 
@@ -31,7 +33,60 @@ void Iso::addIsoInfo(const std::string &isoPath) {
     info.publisher = result.substr(start, end - start);
   }
 
+  info.type = getType(info.publisher, info.volume_id);
+
   myIso.push_back(info);
+}
+
+std::string Iso::getType(const std::string &publisher,
+                         const std::string &volume_id) {
+  auto to_upper = [](std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c) { return std::toupper(c); });
+    return s;
+  };
+
+  std::string p = to_upper(publisher);
+  std::string v = to_upper(volume_id);
+
+  // Windows
+  if (p.find("MICROSOFT") != std::string::npos ||
+      v.find("WIN") != std::string::npos ||
+      v.find("CCCOMA") != std::string::npos) {
+    return "WINDOWS";
+  }
+
+  // Ubuntu
+  if (p.find("CANONICAL") != std::string::npos ||
+      v.find("UBUNTU") != std::string::npos) {
+    return "UBUNTU";
+  }
+
+  // Arch
+  if (p.find("ARCH") != std::string::npos ||
+      v.find("ARCH") != std::string::npos) {
+    return "ARCH";
+  }
+
+  // Debian
+  if (p.find("DEBIAN") != std::string::npos ||
+      v.find("DEBIAN") != std::string::npos) {
+    return "DEBIAN";
+  }
+
+  // Fedora
+  if (p.find("FEDORA") != std::string::npos ||
+      v.find("FEDORA") != std::string::npos) {
+    return "FEDORA";
+  }
+
+  // Mac
+  if (p.find("APPLE") != std::string::npos ||
+      v.find("MAC") != std::string::npos) {
+    return "MAC";
+  }
+
+  return "UNKNOWN";
 }
 
 int main() {
@@ -41,7 +96,7 @@ int main() {
     std::cout << info.volume_id << "\n";
     std::cout << info.publisher << "\n";
     std::cout << info.isoPath << "\n";
-    std::cout << info.getType() << "\n";
+    std::cout << info.type << "\n";
   }
   return 0;
 }
