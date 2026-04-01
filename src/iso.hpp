@@ -51,5 +51,5 @@ public:
   void addIsoInfo(const std::string &isoPath);
   inline std::vector<IsoInfo> getIsoInfo() const { return myIso; }
 
-  void validateIso();
+  bool containsFile(const std::string &isoPath, const std::string &fileName);
 };
