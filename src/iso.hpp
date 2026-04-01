@@ -1,6 +1,7 @@
-/*
- * Este archivo se encarga de manejar las validaciones de archios iso
- * De esta manera detectara que tipo de imagen estamos usando
+/**
+ * @file iso.hpp
+ * @brief Clase encargada de manejar las validaciones y metadatos de archivos
+ * ISO.
  */
 
 #pragma once
@@ -9,24 +10,41 @@
 #include <string>
 #include <vector>
 
+/**
+ * @class Iso
+ * @brief Proporciona funcionalidades para identificar el tipo de ISO y extraer
+ * su información.
+ */
 class Iso {
-private:
-#ifdef ISO_TYPE
-  // Enum para identificar el tipo de imagen
-  // TODO: Agregar mas tipos de imagenes en el futuro
-  enum class IsoType { WINDOWS, UBUNTU, ARCH, DEBIAN, FEDORA, MAC, UNKNOWN };
-#endif
+public:
+  /**
+   * @enum IsoType
+   * @brief Enumeración de los tipos de sistemas operativos soportados para
+   * validación.
+   */
+  enum class IsoType { AUTO, WINDOWS, ARCH, DEBIAN_UBUNTU };
 
+private:
+  /**
+   * @struct IsoInfo
+   * @brief Estructura que almacena los metadatos extraídos de una imagen ISO.
+   */
   struct IsoInfo {
-    std::string volume_id; // label
-    std::string publisher;
-    std::string isoPath;
-    std::string architecture;
-    std::string type;
+    std::string volume_id;    /**< Identificador de volumen (Label) */
+    std::string publisher;    /**< Publicador de la imagen */
+    std::string isoPath;      /**< Ruta local del archivo ISO */
+    std::string architecture; /**< Arquitectura detectada */
+    std::string type;         /**< Tipo de sistema operativo (string) */
   };
 
-  std::vector<IsoInfo> myIso;
+  std::vector<IsoInfo> myIso; /**< Lista de ISOs procesadas */
 
+  /**
+   * @brief Ejecuta un comando del sistema y captura su salida estándar.
+   * @param cmd Comando a ejecutar.
+   * @return std::string Salida del comando.
+   * @throw std::runtime_error si no se puede abrir el pipe del comando.
+   */
   inline std::string get_execute(const std::string &cmd) {
     std::string result;
     FILE *pipe = popen(cmd.c_str(), "r");
@@ -41,30 +59,102 @@ private:
     return result;
   }
 
-  std::string getType(const std::string &publisher,
-                      const std::string &volume_id);
+  /**
+   * @brief Verifica la existencia de archivos específicos dentro de la ISO
+   * usando bit7z.
+   * @param isoPath Ruta del archivo ISO.
+   * @param signatures Vector de rutas de archivos a buscar como firmas.
+   * @param format Formato de archivo (ISO, UDF, etc).
+   * @return true si se encuentra al menos una de las firmas.
+   */
+  bool checkSignature(const std::string &isoPath,
+                      const std::vector<std::string> &signatures,
+                      const bit7z::BitInFormat &format);
+
+  /**
+   * @brief Lógica interna para decidir qué validador ejecutar según el tipo
+   * solicitado.
+   * @param isoPath Ruta del archivo ISO.
+   * @param type Tipo de ISO contra el que se desea validar.
+   * @return std::string Nombre del tipo detectado o "ERROR".
+   */
+  std::string runValidation(const std::string &isoPath,
+                            IsoType type = IsoType::AUTO);
+
+protected:
+  /**
+   * @brief Valida si la imagen corresponde a Windows (UDF/ISO).
+   * @param isoPath Ruta del archivo ISO.
+   * @return true si se detectan firmas de Windows.
+   */
+  bool isWindows(const std::string &isoPath);
+
+  /**
+   * @brief Valida si la imagen corresponde a una derivada de Debian o Ubuntu.
+   * @param isoPath Ruta del archivo ISO.
+   * @return true si se detectan firmas de Debian/Ubuntu.
+   */
+  bool isDebianUbuntu(const std::string &isoPath);
+
+  /**
+   * @brief Valida si la imagen corresponde a Arch Linux.
+   * @param isoPath Ruta del archivo ISO.
+   * @return true si se detectan firmas de Arch Linux.
+   */
+  bool isArch(const std::string &isoPath);
+
+  /**
+   * @struct WindowsSignatures
+   * @brief Firmas de archivos críticas para imágenes de Windows.
+   */
+  struct WindowsSignatures {
+    static inline const std::vector<std::string> files = {
+        "sources/install.wim", "sources/install.esd", "sources/boot.wim",
+        "boot/bcd"};
+  };
+
+  /**
+   * @struct DebianUbuntuSignatures
+   * @brief Firmas de archivos críticas para imágenes de Debian/Ubuntu.
+   */
+  struct DebianUbuntuSignatures {
+    static inline const std::vector<std::string> files = {
+        ".disk/info", "casper/", "debian", ".disk/base_installable"};
+  };
+
+  /**
+   * @struct ArchSignatures
+   * @brief Firmas de archivos críticas para imágenes de Arch Linux.
+   */
+  struct ArchSignatures {
+    static inline const std::vector<std::string> files = {
+        "arch/airootfs.sfs", "arch/x86_64/airootfs.sfs", "arch/version"};
+  };
 
 public:
+  /**
+   * @brief Constructor por defecto.
+   */
   Iso() = default;
+
+  /**
+   * @brief Destructor por defecto.
+   */
   ~Iso() = default;
 
   /**
-   * @brief Agrega la informacion de la iso
-   * @param isoPath Ruta del archivo iso
-   * @return string con la informacion de la iso
+   * @brief Método principal para procesar una ISO. Valida el tipo y extrae
+   * metadatos.
+   * @param isoPath Ruta del archivo ISO.
+   * @param type Tipo de sistema operativo que se espera validar.
+   * @return std::string "OK" si la validación es exitosa, "ERROR" en caso
+   * contrario.
    */
-  std::string addIsoInfo(const std::string &isoPath);
+  std::string addIsoInfo(const std::string &isoPath, IsoType type);
 
   /**
-   * @brief Obtiene la informacion de la iso
-   * @return vector de IsoInfo
+   * @brief Obtiene la lista de metadatos de las ISOs validadas correctamente.
+   * @return std::vector<IsoInfo> Vector con la información de las ISOs.
    */
   inline std::vector<IsoInfo> getIsoInfo() const { return myIso; }
-
-  /**
-   * @brief Verifica si la iso contiene el archivo especificado
-   * @param isoPath Ruta del archivo iso
-   * @return true si contiene el archivo, false en caso contrario
-   */
-  bool isWindows(const std::string &isoPath);
 };
