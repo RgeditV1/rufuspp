@@ -51,8 +51,9 @@ public:
   /**
    * @brief Agrega la informacion de la iso
    * @param isoPath Ruta del archivo iso
+   * @return string con la informacion de la iso
    */
-  void addIsoInfo(const std::string &isoPath);
+  std::string addIsoInfo(const std::string &isoPath);
 
   /**
    * @brief Obtiene la informacion de la iso
@@ -65,5 +66,5 @@ public:
    * @param isoPath Ruta del archivo iso
    * @return true si contiene el archivo, false en caso contrario
    */
-  bool containsFile(const std::string &isoPath);
+  bool isWindows(const std::string &isoPath);
 };

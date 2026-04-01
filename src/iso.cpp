@@ -3,7 +3,7 @@
 #include <cctype>
 #include <iostream>
 
-void Iso::addIsoInfo(const std::string &isoPath) {
+std::string Iso::addIsoInfo(const std::string &isoPath) {
   // construimos los comandos con iso info
 
   IsoInfo info;
@@ -34,7 +34,11 @@ void Iso::addIsoInfo(const std::string &isoPath) {
 
   info.type = getType(info.publisher, info.volume_id);
 
-  myIso.push_back(info);
+  if (isWindows(isoPath)) {
+    myIso.push_back(info);
+    return "WINDOWS";
+  }
+  return "ERROR";
 }
 
 std::string Iso::getType(const std::string &publisher,
@@ -88,7 +92,7 @@ std::string Iso::getType(const std::string &publisher,
   return "UNKNOWN";
 }
 
-bool Iso::containsFile(const std::string &isoPath) {
+bool Iso::isWindows(const std::string &isoPath) {
   try {
     bit7z::Bit7zLibrary lib{"/usr/lib/7zip/7z.so"};
     bit7z::BitArchiveReader reader{lib, isoPath, bit7z::BitFormat::Iso};

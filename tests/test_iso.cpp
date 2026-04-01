@@ -7,25 +7,26 @@ protected:
     Iso iso;
 };
 
-TEST_F(IsoTest, ContainsFileValid) {
+TEST_F(IsoTest, IsWindowsValid) {
     std::string test_iso = "/tmp/test.iso";
     
-    // El archivo debe haber sido creado por el script setup
-    std::ifstream f(test_iso.c_str());
-    if (!f.good()) {
-        GTEST_SKIP() << "Test ISO file not found at " << test_iso;
-    }
+    // Create dummy ISO with install.wim
+    system("mkdir -p /tmp/iso_test/sources && touch /tmp/iso_test/sources/install.wim && mkisofs -o /tmp/test.iso /tmp/iso_test && rm -rf /tmp/iso_test");
 
-    EXPECT_TRUE(iso.containsFile(test_iso));
+    EXPECT_TRUE(iso.isWindows(test_iso));
+    EXPECT_EQ(iso.addIsoInfo(test_iso), "WINDOWS");
+    
+    remove(test_iso.c_str());
 }
 
-TEST_F(IsoTest, ContainsFileInvalid) {
-    // Crear un ISO temporal sin el archivo buscado
+TEST_F(IsoTest, IsWindowsInvalid) {
+    // Create an ISO without the required files
     std::string invalid_iso = "/tmp/invalid_test.iso";
     system("mkdir -p /tmp/iso_invalid && mkisofs -o /tmp/invalid_test.iso /tmp/iso_invalid && rm -rf /tmp/iso_invalid");
 
-    EXPECT_FALSE(iso.containsFile(invalid_iso));
+    EXPECT_FALSE(iso.isWindows(invalid_iso));
+    EXPECT_EQ(iso.addIsoInfo(invalid_iso), "ERROR");
     
-    // Limpiar
+    // Cleanup
     remove(invalid_iso.c_str());
 }
