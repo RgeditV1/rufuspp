@@ -1,4 +1,5 @@
 #include "format.hpp"
+#include "../execute.hpp"
 #include "../usb_detector.hpp"
 #include <fstream>
 #include <sstream>

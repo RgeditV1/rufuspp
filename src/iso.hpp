@@ -41,5 +41,5 @@ public:
   void addIsoInfo(const IsoInfo &iso);
   std::vector<IsoInfo> getIsoInfo() const;
 
-  static void validateIso();
+  virtual void validateIso() = 0;
 };

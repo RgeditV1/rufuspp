@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "../execute.hpp"
 #include "../usb_detector.hpp"
 #include <cstdint>
 #include <fcntl.h>
@@ -9,7 +10,6 @@
 #include <string>
 #include <sys/ioctl.h>
 #include <unistd.h>
-#include <vector>
 
 class FNtfs;
 class FFat32;
@@ -48,7 +48,7 @@ public:
 protected:
   bool is_done = false;
 
-  void refreshPartitions(const std::string &devPath) {
+  inline void refreshPartitions(const std::string &devPath) {
     int fd = open(devPath.c_str(), O_RDONLY);
     if (fd >= 0) {
       ioctl(fd, BLKRRPART, NULL); // Re-read partition table
@@ -56,10 +56,10 @@ protected:
     }
   }
 
-  bool unmountDevice(UsbDetector::Device &device) {
+  inline bool unmountDevice(UsbDetector::Device &device) {
     if (device.mountPoint.empty()) {
-      std::cout << "Device " << device.path << " is not mounted, skipping umount."
-                << std::endl;
+      std::cout << "Device " << device.path
+                << " is not mounted, skipping umount." << std::endl;
       return true;
     }
     if (!execute("sudo umount " + device.path)) {
@@ -69,22 +69,14 @@ protected:
     return true;
   }
 
-  bool execute(const std::string &cmd) { // execute command
-    int result = std::system(cmd.c_str());
-    if (result != 0) {
-      std::cerr << "Error: " << cmd << std::endl;
-      return false;
-    }
-    return true;
-  }
-
-  bool applyPartitionTable(const PartitionTable &p_type,
-                           UsbDetector::Device &device) {
+  inline bool applyPartitionTable(const PartitionTable &p_type,
+                                  UsbDetector::Device &device) {
     if (p_type == PartitionTable::GPT) {
       if (!execute("sudo parted -s " + device.path + " mklabel gpt")) {
         return false;
       }
-      std::cout << "GPT partition table applied to " << device.path << std::endl;
+      std::cout << "GPT partition table applied to " << device.path
+                << std::endl;
     } else if (p_type == PartitionTable::MBR) {
       if (!execute("sudo parted " + device.path + " mklabel msdos")) {
         return false;
