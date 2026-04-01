@@ -11,6 +11,7 @@ pkg_check_modules(UDEV REQUIRED libudev)
 # Main executable
 add_executable(rufuspp 
     src/main.cpp
+    src/iso.cpp
     src/usb_detector.cpp
     src/storage/format.cpp
 )
@@ -25,7 +26,15 @@ target_include_directories(rufuspp PRIVATE
 link_directories(${UDEV_LIBRARY_DIRS})
 add_definitions(${UDEV_CFLAGS_OTHER})
 
-target_link_libraries(rufuspp PRIVATE ${UDEV_LIBRARIES})
+# Definir la ruta de las librerías de bit7z
+set(BIT7Z_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/bit7z/lib/x64)
+
+target_link_libraries(rufuspp PRIVATE 
+    ${UDEV_LIBRARIES}
+    debug ${BIT7Z_LIB_DIR}/libbit7z64_d.a
+    optimized ${BIT7Z_LIB_DIR}/libbit7z64.a
+)
+
 
 
 # Tests

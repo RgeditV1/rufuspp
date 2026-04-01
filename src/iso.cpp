@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <cctype>
 #include <iostream>
-#include <memory>
 
 void Iso::addIsoInfo(const std::string &isoPath) {
   // construimos los comandos con iso info
@@ -89,14 +88,23 @@ std::string Iso::getType(const std::string &publisher,
   return "UNKNOWN";
 }
 
-int main() {
-  std::unique_ptr<Iso> iso = std::make_unique<Iso>();
-  iso->addIsoInfo("/home/rgedit/Descargas/Win10_22H2_Spanish_x64v1.iso");
-  for (auto &info : iso->getIsoInfo()) {
-    std::cout << info.volume_id << "\n";
-    std::cout << info.publisher << "\n";
-    std::cout << info.isoPath << "\n";
-    std::cout << info.type << "\n";
+bool Iso::containsFile(const std::string &isoPath) {
+  try {
+    bit7z::Bit7zLibrary lib{"/usr/lib/7zip/7z.so"};
+    bit7z::BitArchiveReader reader{lib, isoPath, bit7z::BitFormat::Iso};
+
+    auto items = reader.items();
+    for (const auto &item : items) {
+      std::string path = item.path();
+      // standard paths for windows installation images
+      if (path == "sources/install.wim" || path == "sources/install.esd" ||
+          path == "SOURCES/INSTALL.WIM" || path == "SOURCES/INSTALL.ESD") {
+        return true;
+      }
+    }
+  } catch (const bit7z::BitException &ex) {
+    std::cerr << "Bit7z Error: " << ex.what() << std::endl;
+    return false;
   }
-  return 0;
+  return false;
 }

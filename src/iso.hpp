@@ -4,7 +4,7 @@
  */
 
 #pragma once
-
+#include <bit7z/bit7z.hpp>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -48,8 +48,22 @@ public:
   Iso() = default;
   ~Iso() = default;
 
+  /**
+   * @brief Agrega la informacion de la iso
+   * @param isoPath Ruta del archivo iso
+   */
   void addIsoInfo(const std::string &isoPath);
+
+  /**
+   * @brief Obtiene la informacion de la iso
+   * @return vector de IsoInfo
+   */
   inline std::vector<IsoInfo> getIsoInfo() const { return myIso; }
 
-  bool containsFile(const std::string &isoPath, const std::string &fileName);
+  /**
+   * @brief Verifica si la iso contiene el archivo especificado
+   * @param isoPath Ruta del archivo iso
+   * @return true si contiene el archivo, false en caso contrario
+   */
+  bool containsFile(const std::string &isoPath);
 };
