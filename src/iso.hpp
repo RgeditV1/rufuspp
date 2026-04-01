@@ -11,14 +11,25 @@
 
 class Iso {
 private:
-  enum class IsoType { WINDOWS, LINUX, MAC };
+  // Enum para identificar el tipo de imagen
+  // TODO: Agregar mas tipos de imagenes en el futuro
+  enum class IsoType { WINDOWS, UBUNTU, ARCH, DEBIAN, FEDORA, MAC, UNKNOWN };
 
   struct IsoInfo {
     std::string name;
+    std::string volume_id;
+    std::string publisher;
     std::string version;
     std::string isoPath;
     std::string architecture;
-    IsoType type;
+    IsoType type =
+        publisher.find("Microsoft") != std::string::npos   ? IsoType::WINDOWS
+        : publisher.find("Canonical") != std::string::npos ? IsoType::UBUNTU
+        : publisher.find("Arch") != std::string::npos      ? IsoType::ARCH
+        : publisher.find("Debian") != std::string::npos    ? IsoType::DEBIAN
+        : publisher.find("Fedora") != std::string::npos    ? IsoType::FEDORA
+        : publisher.find("Apple") != std::string::npos     ? IsoType::MAC
+                                                           : IsoType::UNKNOWN;
   };
 
   std::vector<IsoInfo> myIso;
