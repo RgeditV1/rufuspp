@@ -32,15 +32,13 @@ int main() {
   std::cout << "--------------------------------------------------"
             << std::endl;
   std::cout << "Testing Windows ISO: "
-            << iso->addIsoInfo("/home/rgedit/Descargas/ubuntu.iso",
-                               Iso::IsoType::AUTO)
+            << iso->addIsoInfo("/home/rgedit/Descargas/win.iso")
             << std::endl; // TODO: Agregar la ruta de la iso como parametro
 
   for (const auto &iso : iso->getIsoInfo()) {
     std::cout << "--------------------------------------------------"
               << std::endl;
     std::cout << "Volume id: " << iso.volume_id << std::endl;
-    std::cout << "Publisher: " << iso.publisher << std::endl;
     std::cout << "Iso path: " << iso.isoPath << std::endl;
     std::cout << "Boot type: " << iso.bootType << std::endl;
     std::cout << "Type: " << iso.type << std::endl;
