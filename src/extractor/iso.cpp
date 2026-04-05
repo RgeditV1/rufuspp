@@ -25,6 +25,13 @@ std::string Iso::addIsoInfo(const std::string &isoPath, IsoType type) {
       size_t end = result.find('\n', start); // Buscamos el final de esa línea
       info.volume_id = result.substr(start, end - start);
     }
+
+    bool is_uefi = isUefiBootable(isoPath, WindowsSignatures::uefi_files);
+    if (!is_uefi) {
+      info.bootType = isBiosBootable(isoPath, WindowsSignatures::bios_files) ? "BIOS" : "UNKNOWN";
+    } else {
+      info.bootType = "UEFI";
+    }
     myIso.push_back(info);
     return "OK";
   }
@@ -94,11 +101,11 @@ std::string Iso::runValidation(const std::string &isoPath, IsoType type) {
 bool Iso::isWindows(const std::string &isoPath) {
   std::cout << "[DEBUG] Checking for Windows signatures..." << std::endl;
   // Prefer UDF (common on Windows ISOs), but fall back to ISO if UDF isn't supported
-  if (checkSignature(isoPath, WindowsSignatures::files,
+  if (checkSignature(isoPath, WindowsSignatures::data_files,
                      bit7z::BitFormat::Udf)) {
     return true;
   }
-  return checkSignature(isoPath, WindowsSignatures::files,
+  return checkSignature(isoPath, WindowsSignatures::data_files,
                         bit7z::BitFormat::Iso);
 }
 
@@ -112,4 +119,14 @@ bool Iso::isArch(const std::string &isoPath) {
   std::cout << "[DEBUG] Checking for Arch Linux signatures..." << std::endl;
   // Arch usa ISO9660 para sus imágenes oficiales
   return checkSignature(isoPath, ArchSignatures::files, bit7z::BitFormat::Iso);
+}
+
+bool Iso::isUefiBootable(const std::string &isoPath, const std::vector<std::string> &uefi_files) {
+  std::cout << "[DEBUG] Checking for UEFI boot signatures..." << std::endl;
+  return checkSignature(isoPath, uefi_files, bit7z::BitFormat::Iso) ? true : checkSignature(isoPath, uefi_files, bit7z::BitFormat::Udf);
+}
+
+bool Iso::isBiosBootable(const std::string &isoPath, const std::vector<std::string> &bios_files) {
+  std::cout << "[DEBUG] Checking for BIOS boot signatures..." << std::endl;
+  return checkSignature(isoPath, bios_files, bit7z::BitFormat::Iso) ? true : checkSignature(isoPath, bios_files, bit7z::BitFormat::Udf);
 }

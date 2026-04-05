@@ -1,4 +1,4 @@
-#include "iso.hpp"
+#include "./extractor/iso.hpp"
 #define TEST
 #ifndef TEST
 #include "storage/format.hpp"
@@ -42,7 +42,7 @@ int main() {
     std::cout << "Volume id: " << iso.volume_id << std::endl;
     std::cout << "Publisher: " << iso.publisher << std::endl;
     std::cout << "Iso path: " << iso.isoPath << std::endl;
-    std::cout << "Architecture: " << iso.architecture << std::endl;
+    std::cout << "Boot type: " << iso.bootType << std::endl;
     std::cout << "Type: " << iso.type << std::endl;
   }
   return 0;

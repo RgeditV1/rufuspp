@@ -9,7 +9,7 @@ add_executable(rufuspp_tests
     test_iso.cpp
     ../src/usb_detector.cpp
     ../src/storage/format.cpp
-    ../src/iso.cpp
+    ../src/extractor/iso.cpp
 )
 
 # Definir la ruta de las librerías de bit7z

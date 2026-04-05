@@ -11,7 +11,7 @@ pkg_check_modules(UDEV REQUIRED libudev)
 # Main executable
 add_executable(rufuspp 
     src/main.cpp
-    src/iso.cpp
+    src/extractor/iso.cpp
     src/usb_detector.cpp
     src/storage/format.cpp
 )

@@ -33,7 +33,7 @@ private:
     std::string volume_id;    /**< Identificador de volumen (Label) */
     std::string publisher;    /**< Publicador de la imagen */
     std::string isoPath;      /**< Ruta local del archivo ISO */
-    std::string architecture; /**< Arquitectura detectada */
+    std::string bootType;     /**< Tipo de arranque (UEFI, BIOS) */
     std::string type;         /**< Tipo de sistema operativo (string) */
   };
 
@@ -61,6 +61,21 @@ private:
   std::string runValidation(const std::string &isoPath,
                             IsoType type = IsoType::AUTO);
 
+  /**
+   * @brief Verifica si la imagen es arrancable via UEFI.
+   * @param isoPath Ruta del archivo ISO.
+   * @param uefi_files Vector de archivos UEFI a buscar.
+   * @return true si se detectan todos los archivos UEFI necesarios.
+   */
+  bool isUefiBootable(const std::string &isoPath, const std::vector<std::string> &uefi_files);
+
+  /**
+   * @brief Verifica si la imagen es arrancable via BIOS (Legacy).
+   * @param isoPath Ruta del archivo ISO.
+   * @param bios_files Vector de archivos BIOS a buscar.
+   * @return true si se detectan todos los archivos BIOS necesarios.
+   */
+  bool isBiosBootable(const std::string &isoPath, const std::vector<std::string> &bios_files);
 protected:
   /**
    * @brief Valida si la imagen corresponde a Windows (UDF/ISO).
@@ -83,15 +98,29 @@ protected:
    */
   bool isArch(const std::string &isoPath);
 
-  /**
-   * @struct WindowsSignatures
-   * @brief Firmas de archivos críticas para imágenes de Windows.
-   */
-  struct WindowsSignatures {
-    static inline const std::vector<std::string> files = {
-        "sources/install.wim", "sources/install.esd", "sources/boot.wim",
-        "boot/bcd"};
-  };
+/**
+ * @brief Estructura que define las firmas de archivos críticas para imágenes de Windows.
+ */
+struct WindowsSignatures {
+    // Archivos obligatorios para arranque UEFI
+    static inline const std::vector<std::string> uefi_files = {
+        "efi/boot/bootx64.efi", 
+        "efi/boot/bootia32.efi", // Soporte para tablets/laptops de 32 bits
+        "bootmgfw.efi"
+    };
+
+    // Archivos obligatorios para arranque BIOS (Legacy)
+    static inline const std::vector<std::string> bios_files = {
+        "bootmgr",
+        "boot/bcd"
+    };
+
+    // Archivos de datos (independientes del arranque)
+    static inline const std::vector<std::string> data_files = {
+        "sources/install.wim", 
+        "sources/install.esd"
+    };
+};
 
   /**
    * @struct DebianUbuntuSignatures
