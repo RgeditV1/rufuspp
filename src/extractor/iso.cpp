@@ -1,4 +1,5 @@
 #include "iso.hpp"
+#include "../execute.hpp"
 #include <iostream>
 
 std::string Iso::addIsoInfo(const std::string &isoPath, IsoType type) {

@@ -40,26 +40,6 @@ private:
   std::vector<IsoInfo> myIso; /**< Lista de ISOs procesadas */
 
   /**
-   * @brief Ejecuta un comando del sistema y captura su salida estándar.
-   * @param cmd Comando a ejecutar.
-   * @return std::string Salida del comando.
-   * @throw std::runtime_error si no se puede abrir el pipe del comando.
-   */
-  inline std::string get_execute(const std::string &cmd) {
-    std::string result;
-    FILE *pipe = popen(cmd.c_str(), "r");
-    if (!pipe) {
-      throw std::runtime_error("Error: No se pudo ejecutar el comando");
-    }
-    char buffer[128];
-    while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-      result += buffer;
-    }
-    pclose(pipe);
-    return result;
-  }
-
-  /**
    * @brief Verifica la existencia de archivos específicos dentro de la ISO
    * usando bit7z.
    * @param isoPath Ruta del archivo ISO.
