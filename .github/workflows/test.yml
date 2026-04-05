@@ -1,0 +1,67 @@
+name: C++ Build & Tests
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  test-ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Instalar dependencias en Ubuntu
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential cmake pkg-config libudev-dev libgtest-dev python3
+          # Compilar GoogleTest (Ubuntu lo instala como fuente)
+          cd /usr/src/gtest
+          sudo cmake .
+          sudo make
+          sudo cp lib/*.a /usr/lib
+
+      - name: Ejecutar script de instalación 7zip
+        run: |
+          python3 misc/7zip-install.py
+
+      - name: Configurar y compilar
+        run: |
+          cmake -S . -B build
+          cmake --build build
+
+      - name: Ejecutar tests
+        run: |
+          cd build/tests
+          ctest --output-on-failure
+
+  test-arch:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Instalar dependencias en Arch
+        run: |
+          pacman -Sy --noconfirm base-devel cmake pkgconf gtest systemd git python
+
+      - name: Ejecutar script de instalación 7zip
+        run: |
+          python3 misc/7zip-install.py
+
+      - name: Configurar y compilar
+        run: |
+          cmake -S . -B build
+          cmake --build build
+
+      - name: Ejecutar tests
+        run: |
+          cd build/tests
+          ctest --output-on-failure
