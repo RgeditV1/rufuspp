@@ -42,3 +42,4 @@
 # build
 build/*
 build/tests/*
+.codex

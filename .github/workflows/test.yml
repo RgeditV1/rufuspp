@@ -20,7 +20,8 @@ jobs:
       - name: Instalar dependencias en Ubuntu
         run: |
           sudo apt update
-          sudo apt install -y build-essential cmake pkg-config libudev-dev libgtest-dev python3
+          sudo apt install -y build-essential cmake pkg-config libudev-dev libgtest-dev python3 \
+            genisoimage dosfstools ntfs-3g parted util-linux
           # Compilar GoogleTest (Ubuntu lo instala como fuente)
           cd /usr/src/gtest
           sudo cmake .
@@ -30,6 +31,9 @@ jobs:
       - name: Ejecutar script de instalación 7zip
         run: |
           python3 misc/7zip-install.py
+      - name: Ejecutar script de instalación cdrtools
+        run: |
+          python3 misc/cdrtools-install.py
 
       - name: Configurar y compilar
         run: |
@@ -50,11 +54,44 @@ jobs:
 
       - name: Instalar dependencias en Arch
         run: |
-          pacman -Sy --noconfirm base-devel cmake pkgconf gtest systemd git python
+          pacman -Sy --noconfirm base-devel cmake pkgconf gtest systemd git python \
+            cdrtools dosfstools ntfs-3g parted util-linux sudo
 
       - name: Ejecutar script de instalación 7zip
         run: |
           python3 misc/7zip-install.py
+      - name: Ejecutar script de instalación cdrtools
+        run: |
+          python3 misc/cdrtools-install.py
+
+      - name: Configurar y compilar
+        run: |
+          cmake -S . -B build
+          cmake --build build
+
+      - name: Ejecutar tests
+        run: |
+          cd build/tests
+          ctest --output-on-failure
+
+  test-fedora:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Instalar dependencias en Fedora
+        run: |
+          dnf -y install gcc gcc-c++ make cmake pkgconf-pkg-config systemd-devel git python3 \
+            gtest-devel 7zip dosfstools ntfs-3g parted util-linux sudo genisoimage xorriso
+
+      - name: Ejecutar script de instalación 7zip
+        run: |
+          python3 misc/7zip-install.py
+      - name: Ejecutar script de instalación cdrtools
+        run: |
+          python3 misc/cdrtools-install.py
 
       - name: Configurar y compilar
         run: |

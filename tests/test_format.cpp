@@ -4,6 +4,8 @@
 #include <cstdio>
 #include <string>
 #include <iostream>
+#include <unistd.h>
+#include <sys/stat.h>
 
 class LoopDeviceHelper {
 public:
@@ -18,8 +20,8 @@ public:
             throw std::runtime_error("Could not create temp file");
         }
 
-        // 2. Find and setup loop
-        FILE* fp = popen("sudo losetup -f 2>/dev/null", "r");
+        // 2. Find and setup loop with partition scan enabled
+        FILE* fp = popen(("sudo losetup --find --show --partscan " + m_tempFile + " 2>/dev/null").c_str(), "r");
         char buf[128];
         if (!fp || !fgets(buf, sizeof(buf), fp)) {
             if (fp) pclose(fp);
@@ -29,7 +31,7 @@ public:
         m_loopPath = buf;
         if (!m_loopPath.empty() && m_loopPath.back() == '\n') m_loopPath.pop_back();
 
-        if (std::system(("sudo losetup " + m_loopPath + " " + m_tempFile).c_str()) != 0) {
+        if (m_loopPath.empty()) {
             throw std::runtime_error("Could not setup loop device");
         }
         
@@ -39,6 +41,9 @@ public:
 
     ~LoopDeviceHelper() {
         if (!m_loopPath.empty()) {
+            if (commandExists("kpartx")) {
+                std::system(("sudo kpartx -d " + m_loopPath + " 2>/dev/null").c_str());
+            }
             std::system(("sudo losetup -d " + m_loopPath + " 2>/dev/null").c_str());
         }
         if (!m_tempFile.empty()) {
@@ -54,12 +59,51 @@ public:
     }
 
 private:
+    bool commandExists(const std::string& cmd) const {
+        std::string check = "command -v " + cmd + " >/dev/null 2>&1";
+        return std::system(check.c_str()) == 0;
+    }
+
     std::string m_tempFile;
     std::string m_loopPath;
 };
 
 class FormatTest : public ::testing::Test {
 protected:
+    bool commandExists(const std::string& cmd) {
+        std::string check = "command -v " + cmd + " >/dev/null 2>&1";
+        return std::system(check.c_str()) == 0;
+    }
+
+    bool canSudoNonInteractive() {
+        if (geteuid() == 0) return true;
+        return std::system("sudo -n true >/dev/null 2>&1") == 0;
+    }
+
+    void skipIfMissingIntegrationDeps(const std::string& fsTool) {
+        if (!canSudoNonInteractive()) {
+            GTEST_SKIP() << "Integration test requires passwordless sudo or root";
+        }
+        if (!commandExists("losetup") || !commandExists("wipefs") || !commandExists("parted") ||
+            !commandExists("blkid") || !commandExists("umount") || !commandExists("truncate")) {
+            GTEST_SKIP() << "Missing required system tools (losetup/wipefs/parted/blkid/umount/truncate)";
+        }
+        if (!commandExists(fsTool)) {
+            GTEST_SKIP() << "Missing filesystem tool: " << fsTool;
+        }
+    }
+
+    void settlePartitions(const std::string& devPath) {
+        if (commandExists("partprobe")) {
+            std::string cmd = "sudo partprobe " + devPath + " 2>/dev/null";
+            std::system(cmd.c_str());
+        }
+        if (commandExists("udevadm")) {
+            std::system("sudo udevadm settle 2>/dev/null");
+        }
+        usleep(300000);
+    }
+
     bool exists(const std::string& path) {
         FILE* fp = fopen(path.c_str(), "r");
         if (fp) {
@@ -67,6 +111,43 @@ protected:
             return true;
         }
         return false;
+    }
+
+    std::string readCommand(const std::string& cmd) {
+        std::string out;
+        FILE* fp = popen(cmd.c_str(), "r");
+        if (!fp) return out;
+        char buf[256];
+        while (fgets(buf, sizeof(buf), fp)) {
+            out += buf;
+        }
+        pclose(fp);
+        return out;
+    }
+
+    bool hasPartitionInTable(const std::string& devPath) {
+        std::string out = readCommand("sudo parted -s " + devPath + " print 2>/dev/null");
+        return out.find("\n 1") != std::string::npos || out.find("\n1 ") != std::string::npos;
+    }
+
+    bool sysPartitionExists(const std::string& loopPath) {
+        std::string base = loopPath.substr(loopPath.find_last_of('/') + 1);
+        std::string sysPath = "/sys/block/" + base + "/" + base + "p1/partition";
+        return exists(sysPath);
+    }
+
+    bool ensurePartitionNode(const std::string& loopPath, const std::string& partPath) {
+        if (exists(partPath)) return true;
+        if (commandExists("partx")) {
+            std::string cmd = "sudo partx -u " + loopPath + " 2>/dev/null";
+            std::system(cmd.c_str());
+        }
+        if (commandExists("kpartx")) {
+            std::string cmd = "sudo kpartx -a " + loopPath + " 2>/dev/null";
+            std::system(cmd.c_str());
+        }
+        settlePartitions(loopPath);
+        return exists(partPath);
     }
 
     std::string getFsType(const std::string& path) {
@@ -102,6 +183,7 @@ TEST_F(FormatTest, GetPartitionPath) {
 
 // Test de integración (requiere sudo y dispositivos loop)
 TEST_F(FormatTest, IntegrationFormatFAT32) {
+    skipIfMissingIntegrationDeps("mkfs.vfat");
     std::string loopPath;
     std::string partPath;
     
@@ -117,15 +199,22 @@ TEST_F(FormatTest, IntegrationFormatFAT32) {
         FFat32 format;
         std::cout << "Running FAT32 integration test on " << loopPath << std::endl;
         format.applyFormat(Format::MakeType::FAT32, Format::PartitionTable::GPT, device);
+        settlePartitions(loopPath);
 
         // Verificación: ¿Se creó la partición?
         bool partExists = false;
         for (int i = 0; i < 10; ++i) {
-            if (exists(partPath)) {
+            if (ensurePartitionNode(loopPath, partPath)) {
                 partExists = true;
                 break;
             }
             usleep(300000);
+        }
+        if (!partExists) {
+            // Some CI environments don't create /dev/loopXp1 even when partition table exists.
+            if (hasPartitionInTable(loopPath) || sysPartitionExists(loopPath)) {
+                GTEST_SKIP() << "Partition exists in table but /dev node was not created (udev/partscan not available)";
+            }
         }
         EXPECT_TRUE(partExists) << "Partition " << partPath << " was not found after format";
 
@@ -139,6 +228,7 @@ TEST_F(FormatTest, IntegrationFormatFAT32) {
 }
 
 TEST_F(FormatTest, IntegrationFormatNTFS) {
+    skipIfMissingIntegrationDeps("mkfs.ntfs");
     std::string loopPath;
     std::string partPath;
     
@@ -154,15 +244,21 @@ TEST_F(FormatTest, IntegrationFormatNTFS) {
         FNtfs format;
         std::cout << "Running NTFS integration test on " << loopPath << std::endl;
         format.applyFormat(Format::MakeType::NTFS, Format::PartitionTable::MBR, device);
+        settlePartitions(loopPath);
 
         // Verificación: ¿Se creó la partición?
         bool partExists = false;
         for (int i = 0; i < 10; ++i) {
-            if (exists(partPath)) {
+            if (ensurePartitionNode(loopPath, partPath)) {
                 partExists = true;
                 break;
             }
             usleep(300000);
+        }
+        if (!partExists) {
+            if (hasPartitionInTable(loopPath) || sysPartitionExists(loopPath)) {
+                GTEST_SKIP() << "Partition exists in table but /dev node was not created (udev/partscan not available)";
+            }
         }
         EXPECT_TRUE(partExists) << "Partition " << partPath << " was not found after format";
 

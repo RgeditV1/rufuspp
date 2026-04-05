@@ -92,8 +92,13 @@ std::string Iso::runValidation(const std::string &isoPath, IsoType type) {
 
 bool Iso::isWindows(const std::string &isoPath) {
   std::cout << "[DEBUG] Checking for Windows signatures..." << std::endl;
+  // Prefer UDF (common on Windows ISOs), but fall back to ISO if UDF isn't supported
+  if (checkSignature(isoPath, WindowsSignatures::files,
+                     bit7z::BitFormat::Udf)) {
+    return true;
+  }
   return checkSignature(isoPath, WindowsSignatures::files,
-                        bit7z::BitFormat::Udf);
+                        bit7z::BitFormat::Iso);
 }
 
 bool Iso::isDebianUbuntu(const std::string &isoPath) {
