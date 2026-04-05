@@ -1,15 +1,16 @@
 #include "iso.hpp"
 #include "../execute.hpp"
+#include <algorithm>
 #include <iostream>
 
 std::string Iso::addIsoInfo(const std::string &isoPath, IsoType type) {
   // construimos los comandos con iso info
 
-  IsoInfo info;
-  info.isoPath = isoPath;
-  info.type = runValidation(isoPath, type);
+  this->info.isoPath = isoPath;
+  this->info.type = runValidation(isoPath, type);
 
-  if (info.type != "ERROR") {
+  if (this->info.type != "ERROR") {
+
     std::string command =
         "isoinfo -d -i '" + isoPath + "' | grep -E 'Volume id'";
     std::string result = get_execute(command);
@@ -23,16 +24,12 @@ std::string Iso::addIsoInfo(const std::string &isoPath, IsoType type) {
     if (vPos != std::string::npos) {
       size_t start = vPos + 11;              // 11 es el largo de "Volume id: "
       size_t end = result.find('\n', start); // Buscamos el final de esa línea
-      info.volume_id = result.substr(start, end - start);
+      this->info.volume_id = result.substr(start, end - start);
     }
 
-    bool is_uefi = isUefiBootable(isoPath, WindowsSignatures::uefi_files);
-    if (!is_uefi) {
-      info.bootType = isBiosBootable(isoPath, WindowsSignatures::bios_files) ? "BIOS" : "UNKNOWN";
-    } else {
-      info.bootType = "UEFI";
-    }
-    myIso.push_back(info);
+    check_boot_compatibility(isoPath);
+
+    this->myIso.push_back(this->info);
     return "OK";
   }
   return "ERROR";
@@ -80,12 +77,13 @@ bool Iso::checkSignature(const std::string &isoPath,
 std::string Iso::runValidation(const std::string &isoPath, IsoType type) {
   switch (type) {
   case IsoType::AUTO:
-    if (isWindows(isoPath))
+    if (isWindows(isoPath)) {
       return "WINDOWS";
-    if (isArch(isoPath))
+    } else if (isArch(isoPath)) {
       return "ARCH";
-    if (isDebianUbuntu(isoPath))
+    } else if (isDebianUbuntu(isoPath)) {
       return "DEBIAN/UBUNTU";
+    }
     return "ERROR";
   case IsoType::WINDOWS:
     return isWindows(isoPath) ? "WINDOWS" : "ERROR";
@@ -117,16 +115,68 @@ bool Iso::isDebianUbuntu(const std::string &isoPath) {
 
 bool Iso::isArch(const std::string &isoPath) {
   std::cout << "[DEBUG] Checking for Arch Linux signatures..." << std::endl;
-  // Arch usa ISO9660 para sus imágenes oficiales
-  return checkSignature(isoPath, ArchSignatures::files, bit7z::BitFormat::Iso);
+  return checkSignature(isoPath, ArchSignatures::files,
+                        bit7z::BitFormat::Iso);
 }
 
-bool Iso::isUefiBootable(const std::string &isoPath, const std::vector<std::string> &uefi_files) {
-  std::cout << "[DEBUG] Checking for UEFI boot signatures..." << std::endl;
-  return checkSignature(isoPath, uefi_files, bit7z::BitFormat::Iso) ? true : checkSignature(isoPath, uefi_files, bit7z::BitFormat::Udf);
-}
+void Iso::check_boot_compatibility(const std::string &isoPath) {
+  auto scan = [&](const bit7z::BitInFormat &format, bool &has_uefi,
+                  bool &has_bios) {
+    try {
+      bit7z::Bit7zLibrary lib{"/usr/lib/7zip/7z.so"};
+      bit7z::BitArchiveReader reader{lib, isoPath, format};
 
-bool Iso::isBiosBootable(const std::string &isoPath, const std::vector<std::string> &bios_files) {
-  std::cout << "[DEBUG] Checking for BIOS boot signatures..." << std::endl;
-  return checkSignature(isoPath, bios_files, bit7z::BitFormat::Iso) ? true : checkSignature(isoPath, bios_files, bit7z::BitFormat::Udf);
+      for (const auto &item : reader.items()) {
+        std::string p = item.path();
+
+        // Normalización de ruta
+        std::replace(p.begin(), p.end(), '\\', '/');
+        if (!p.empty() && p[0] == '/')
+          p.erase(0, 1);
+        std::transform(p.begin(), p.end(), p.begin(), ::tolower);
+
+        // --- DETECCIÓN UEFI ---
+        if (!has_uefi &&
+            (p.find("efi/boot/bootx64.efi") != std::string::npos ||
+             p.find("efi/boot/bootia32.efi") != std::string::npos ||
+             p.find("efi/boot/bootaa64.efi") != std::string::npos ||
+             p.find("efi/boot/grubx64.efi") != std::string::npos)) {
+          has_uefi = true;
+        }
+
+        // --- DETECCIÓN BIOS (Legacy) ---
+        if (!has_bios &&
+            (p.find("bootmgr") != std::string::npos ||
+             p.find("boot/bcd") != std::string::npos ||
+             p.find("isolinux/isolinux.bin") != std::string::npos ||
+             p.find("boot/grub/i386-pc") != std::string::npos)) {
+          has_bios = true;
+        }
+
+        if (has_uefi && has_bios)
+          break;
+      }
+    } catch (const bit7z::BitException &ex) {
+      std::cerr << "[Bit7z Error] " << ex.what() << std::endl;
+    }
+  };
+
+  bool has_uefi = false;
+  bool has_bios = false;
+
+  // Preferimos UDF (común en ISOs Windows), pero hacemos fallback a ISO si falta.
+  scan(bit7z::BitFormat::Udf, has_uefi, has_bios);
+  if (!(has_uefi && has_bios)) {
+    scan(bit7z::BitFormat::Iso, has_uefi, has_bios);
+  }
+
+  if (has_uefi && has_bios) {
+    this->info.bootType = "Dual (UEFI + BIOS)";
+  } else if (has_uefi) {
+    this->info.bootType = "UEFI";
+  } else if (has_bios) {
+    this->info.bootType = "BIOS/Legacy";
+  } else {
+    this->info.bootType = "Unknown / No Booteable";
+  }
 }

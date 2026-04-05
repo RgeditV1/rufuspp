@@ -80,7 +80,10 @@ TEST_F(IsoTest, IsWindowsValid) {
     // Create dummy ISO with install.wim
     createUdfIsoWithInstallWim(test_iso);
 
-    EXPECT_EQ(iso.addIsoInfo(test_iso, Iso::IsoType::WINDOWS), "OK");
+    EXPECT_EQ(iso.addIsoInfo(test_iso), "OK");
+    ASSERT_FALSE(iso.getIsoInfo().empty());
+    EXPECT_EQ(iso.getIsoInfo().back().type, "WINDOWS");
+    EXPECT_EQ(iso.getIsoInfo().back().bootType, "Unknown / No Booteable");
     
     remove(test_iso.c_str());
 }
@@ -94,7 +97,7 @@ TEST_F(IsoTest, IsWindowsInvalid) {
     std::string invalid_iso = "/tmp/invalid_test.iso";
     createUdfIsoEmpty(invalid_iso);
 
-    EXPECT_EQ(iso.addIsoInfo(invalid_iso, Iso::IsoType::WINDOWS), "ERROR");
+    EXPECT_EQ(iso.addIsoInfo(invalid_iso), "ERROR");
     
     // Cleanup
     remove(invalid_iso.c_str());

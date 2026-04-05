@@ -16,28 +16,27 @@
  * su información.
  */
 class Iso {
-public:
-  /**
-   * @enum IsoType
-   * @brief Enumeración de los tipos de sistemas operativos soportados para
-   * validación.
-   */
-  enum class IsoType { AUTO, WINDOWS, ARCH, DEBIAN_UBUNTU };
 
 private:
+  /** @brief Enumeración de los tipos de sistemas operativos soportados para validación. */
+  enum class IsoType { WINDOWS, ARCH, DEBIAN_UBUNTU, AUTO };
+
+  /** @brief Enumeración de compatibilidad de arranque detectada en la ISO. */
+  enum class Compatibility { UNKNOWN, BIOS_ONLY, UEFI_ONLY, DUAL_MODE };
+
   /**
    * @struct IsoInfo
    * @brief Estructura que almacena los metadatos extraídos de una imagen ISO.
    */
   struct IsoInfo {
     std::string volume_id;    /**< Identificador de volumen (Label) */
-    std::string publisher;    /**< Publicador de la imagen */
     std::string isoPath;      /**< Ruta local del archivo ISO */
-    std::string bootType;     /**< Tipo de arranque (UEFI, BIOS) */
+    std::string bootType;     /**< Tipo de arranque (UEFI, BIOS, Dual) */
     std::string type;         /**< Tipo de sistema operativo (string) */
   };
 
   std::vector<IsoInfo> myIso; /**< Lista de ISOs procesadas */
+  IsoInfo info; /**< Estructura temporal para almacenar información durante el procesamiento */
 
   /**
    * @brief Verifica la existencia de archivos específicos dentro de la ISO
@@ -59,23 +58,15 @@ private:
    * @return std::string Nombre del tipo detectado o "ERROR".
    */
   std::string runValidation(const std::string &isoPath,
-                            IsoType type = IsoType::AUTO);
+                            IsoType type);
 
+  
   /**
-   * @brief Verifica si la imagen es arrancable via UEFI.
+   * @brief Analiza el contenido de la ISO para determinar el tipo de arranque.
    * @param isoPath Ruta del archivo ISO.
-   * @param uefi_files Vector de archivos UEFI a buscar.
-   * @return true si se detectan todos los archivos UEFI necesarios.
    */
-  bool isUefiBootable(const std::string &isoPath, const std::vector<std::string> &uefi_files);
+  void check_boot_compatibility(const std::string &isoPath);
 
-  /**
-   * @brief Verifica si la imagen es arrancable via BIOS (Legacy).
-   * @param isoPath Ruta del archivo ISO.
-   * @param bios_files Vector de archivos BIOS a buscar.
-   * @return true si se detectan todos los archivos BIOS necesarios.
-   */
-  bool isBiosBootable(const std::string &isoPath, const std::vector<std::string> &bios_files);
 protected:
   /**
    * @brief Valida si la imagen corresponde a Windows (UDF/ISO).
@@ -102,19 +93,6 @@ protected:
  * @brief Estructura que define las firmas de archivos críticas para imágenes de Windows.
  */
 struct WindowsSignatures {
-    // Archivos obligatorios para arranque UEFI
-    static inline const std::vector<std::string> uefi_files = {
-        "efi/boot/bootx64.efi", 
-        "efi/boot/bootia32.efi", // Soporte para tablets/laptops de 32 bits
-        "bootmgfw.efi"
-    };
-
-    // Archivos obligatorios para arranque BIOS (Legacy)
-    static inline const std::vector<std::string> bios_files = {
-        "bootmgr",
-        "boot/bcd"
-    };
-
     // Archivos de datos (independientes del arranque)
     static inline const std::vector<std::string> data_files = {
         "sources/install.wim", 
@@ -159,7 +137,7 @@ public:
    * @return std::string "OK" si la validación es exitosa, "ERROR" en caso
    * contrario.
    */
-  std::string addIsoInfo(const std::string &isoPath, IsoType type);
+  std::string addIsoInfo(const std::string &isoPath, IsoType type = IsoType::AUTO);
 
   /**
    * @brief Obtiene la lista de metadatos de las ISOs validadas correctamente.
