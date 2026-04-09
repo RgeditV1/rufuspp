@@ -33,6 +33,15 @@ target_link_libraries(rufuspp PRIVATE
     ${UDEV_LIBRARIES}
     debug ${BIT7Z_LIB_DIR}/libbit7z64_d.a
     optimized ${BIT7Z_LIB_DIR}/libbit7z64.a
+    stdc++fs
+)
+
+# Copiar 7z.so junto al ejecutable para que find7zLib() lo encuentre en runtime
+add_custom_command(TARGET rufuspp POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/7zip/7z.so
+        $<TARGET_FILE_DIR:rufuspp>/7z.so
+    COMMENT "Copiando thirdparty/7zip/7z.so junto al ejecutable"
 )
 
 

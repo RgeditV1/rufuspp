@@ -2,6 +2,48 @@
 #include "../execute.hpp"
 #include <algorithm>
 #include <iostream>
+#include <filesystem>
+#include <climits>
+#include <unistd.h>
+
+/**
+ * @brief Resuelve la ruta de 7z.so en tiempo de ejecución.
+ *
+ * Orden de búsqueda:
+ *   1. Directorio del propio ejecutable (copia de thirdparty copiada por CMake).
+ *   2. Rutas estándar del sistema (p7zip / 7zip).
+ * @return Ruta absoluta al 7z.so encontrado.
+ * @throws std::runtime_error si no se pudo localizar la biblioteca.
+ */
+static std::string find7zLib() {
+    // 1. Junto al ejecutable (copia local del thirdparty)
+    char exePath[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", exePath, sizeof(exePath) - 1);
+    if (len > 0) {
+        exePath[len] = '\0';
+        std::filesystem::path exeDir = std::filesystem::path(exePath).parent_path();
+        std::filesystem::path local = exeDir / "7z.so";
+        if (std::filesystem::exists(local))
+            return local.string();
+    }
+
+    // 2. Rutas estándar del sistema
+    static const char* systemPaths[] = {
+        "/usr/lib/7zip/7z.so",
+        "/usr/lib/p7zip/7z.so",
+        "/usr/lib64/7zip/7z.so",
+        "/usr/lib64/p7zip/7z.so",
+        "/usr/lib64/7z.so",
+        nullptr
+    };
+    for (const char** p = systemPaths; *p != nullptr; ++p) {
+        if (std::filesystem::exists(*p))
+            return *p;
+    }
+
+    throw std::runtime_error(
+        "No se encontró 7z.so. Instala p7zip/7zip o coloca 7z.so junto al ejecutable.");
+}
 
 std::string Iso::addIsoInfo(const std::string &isoPath, IsoType type) {
   // construimos los comandos con iso info
@@ -40,7 +82,7 @@ bool Iso::checkSignature(const std::string &isoPath,
                          const bit7z::BitInFormat &format) {
 
   try {
-    bit7z::Bit7zLibrary lib{"/usr/lib/7zip/7z.so"};
+    bit7z::Bit7zLibrary lib{find7zLib()};
     bit7z::BitArchiveReader reader{lib, isoPath, format};
 
     for (const auto &item : reader.items()) {
@@ -123,7 +165,7 @@ void Iso::check_boot_compatibility(const std::string &isoPath) {
   auto scan = [&](const bit7z::BitInFormat &format, bool &has_uefi,
                   bool &has_bios) {
     try {
-      bit7z::Bit7zLibrary lib{"/usr/lib/7zip/7z.so"};
+      bit7z::Bit7zLibrary lib{find7zLib()};
       bit7z::BitArchiveReader reader{lib, isoPath, format};
 
       for (const auto &item : reader.items()) {
