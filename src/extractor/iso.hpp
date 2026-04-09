@@ -134,10 +134,8 @@ public:
    * metadatos.
    * @param isoPath Ruta del archivo ISO.
    * @param type Tipo de sistema operativo que se espera validar.
-   * @return std::string "OK" si la validación es exitosa, "ERROR" en caso
-   * contrario.
    */
-  std::string addIsoInfo(const std::string &isoPath, IsoType type = IsoType::AUTO);
+  bool addIsoInfo(const std::string &isoPath, IsoType type = IsoType::AUTO);
 
   /**
    * @brief Obtiene la lista de metadatos de las ISOs validadas correctamente.

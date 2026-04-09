@@ -98,7 +98,7 @@ TEST_F(IsoTest, IsWindowsValid) {
         GTEST_SKIP() << "Could not create test ISO (env limitation): " << e.what();
     }
 
-    EXPECT_EQ(iso.addIsoInfo(test_iso), "OK");
+    EXPECT_EQ(iso.addIsoInfo(test_iso), true);
     ASSERT_FALSE(iso.getIsoInfo().empty());
     EXPECT_EQ(iso.getIsoInfo().back().type, "WINDOWS");
     EXPECT_EQ(iso.getIsoInfo().back().bootType, "Unknown / No Booteable");
@@ -119,7 +119,7 @@ TEST_F(IsoTest, IsWindowsInvalid) {
         GTEST_SKIP() << "Could not create test ISO (env limitation): " << e.what();
     }
 
-    EXPECT_EQ(iso.addIsoInfo(invalid_iso), "ERROR");
+    EXPECT_EQ(iso.addIsoInfo(invalid_iso), false);
 
     remove(invalid_iso.c_str());
 }

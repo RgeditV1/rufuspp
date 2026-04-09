@@ -19,6 +19,12 @@ public:
     std::string deviceType; // e.g(USB Flash Drive, USB Hard Drive)
   };
 
+    UsbDetector() = default;
+  // ~UsbDetector();
+
+  // lista los dispositivos USB
+  std::vector<Device> listDevices();
+  
 protected:
   struct Size {
     static const uint64_t KB = 1024;
@@ -39,11 +45,4 @@ protected:
    * @return: std::string: punto de montaje del dispositivo
    */
   std::string get_mount_point(const std::string &devnode);
-
-public:
-  UsbDetector() = default;
-  // ~UsbDetector();
-
-  // lista los dispositivos USB
-  std::vector<Device> listDevices();
 };

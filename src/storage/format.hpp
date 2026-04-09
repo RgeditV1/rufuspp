@@ -26,6 +26,14 @@ public:
     NTFS,
   };
 
+  // solo para acortar nombres jaja
+
+  static const PartitionTable gpt = PartitionTable::GPT;
+  static const PartitionTable mbr = PartitionTable::MBR;
+
+  static const MakeType fat32 = MakeType::FAT32;
+  static const MakeType ntfs = MakeType::NTFS;
+
   Format() = default;
   virtual ~Format() = default;
 

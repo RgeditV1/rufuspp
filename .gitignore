@@ -42,3 +42,4 @@
 build/*
 build/tests/*
 .codex
+.vscode

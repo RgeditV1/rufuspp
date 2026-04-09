@@ -45,7 +45,7 @@ static std::string find7zLib() {
         "No se encontró 7z.so. Instala p7zip/7zip o coloca 7z.so junto al ejecutable.");
 }
 
-std::string Iso::addIsoInfo(const std::string &isoPath, IsoType type) {
+bool Iso::addIsoInfo(const std::string &isoPath, IsoType type) {
   // construimos los comandos con iso info
 
   this->info.isoPath = isoPath;
@@ -72,9 +72,9 @@ std::string Iso::addIsoInfo(const std::string &isoPath, IsoType type) {
     check_boot_compatibility(isoPath);
 
     this->myIso.push_back(this->info);
-    return "OK";
+    return true;
   }
-  return "ERROR";
+  return false;
 }
 
 bool Iso::checkSignature(const std::string &isoPath,

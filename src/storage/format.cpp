@@ -67,21 +67,20 @@ bool Format::createPartition(const std::string &diskPath) {
 }
 
 bool FNtfs::applyFileSystem(const MakeType &f_type, const std::string &path) {
-  if (f_type == MakeType::NTFS) {
-    if (!execute("sudo mkfs.ntfs -f " + path)) {
+  if (f_type != ntfs) { return false; }
+  if (!execute("sudo mkfs.ntfs -f " + path)) {
       return false;
     }
     std::cout << "NTFS formatted success: " << path << std::endl;
-  }
-  return true;
+    return true;
 }
 
 bool FFat32::applyFileSystem(const MakeType &f_type, const std::string &path) {
-  if (f_type == MakeType::FAT32) {
-    if (!execute("sudo mkfs.vfat -F 32 " + path)) {
-      return false;
+  if (f_type != fat32) { return false; }
+  if (!execute("sudo mkfs.vfat -F 32 " + path)) {
+    return false;
     }
     std::cout << "FAT32 formatted success: " << path << std::endl;
-  }
-  return true;
+
+    return true;
 }
